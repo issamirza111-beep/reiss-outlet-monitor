@@ -1,8 +1,9 @@
 name: Reiss outlet monitor
 
 on:
-  schedule:
-    - cron: "7,37 * * * *"   # every 30 minutes
+  # Paused: Reiss blocks GitHub's servers (HTTP 403). Re-enable by removing the # marks.
+  # schedule:
+  #   - cron: "7,37 * * * *"   # every 30 minutes
   workflow_dispatch:          # lets you hit "Run workflow" manually
 
 permissions:

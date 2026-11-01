@@ -26,7 +26,10 @@ first run just records what's there today, so you won't get 2,000 alerts.
 
 You can use both.
 
-## 2. Run it for free on GitHub (no computer needs to stay on)
+## 2. (Not working) Run it on GitHub's servers
+
+Reiss currently blocks GitHub's servers (HTTP 403), so the schedule is paused.
+Kept here in case that changes.
 
 1. Create a free GitHub account → **New repository** (private is fine).
 2. Upload everything in this folder, keeping the `.github/workflows/monitor.yml` path.
@@ -47,14 +50,27 @@ hidden either way; the only thing visible is the list of Reiss items it has seen
 GitHub's scheduler can run a few minutes late at busy times, so expect alerts
 within roughly 30–40 minutes of an item going live.
 
-## 3. Or run it on your own computer
+## 3. Run it on your Mac (recommended — Reiss blocks GitHub's servers)
+
+In **Terminal**, paste (swap in your ntfy topic at the end):
 
 ```bash
-export NTFY_TOPIC=reiss-outlet-issa-7f3k9
-python3 reiss_monitor.py
+curl -fsSL https://raw.githubusercontent.com/issamirza111-beep/reiss-outlet-monitor/main/mac/install.sh | bash -s -- YOUR-NTFY-TOPIC
 ```
-Schedule it with cron (Mac/Linux) or Task Scheduler (Windows). Python 3.9+,
-no packages to install.
+
+It checks every 30 minutes while the Mac is awake (missed checks catch up on
+wake). Files live in `~/reiss-monitor`; the log is `~/reiss-monitor/monitor.log`.
+
+**Control it from your phone**
+- **Pause / resume:** edit `control.txt` in this repo on GitHub → `off` / `on`.
+  The Mac reads it before every check.
+- **Change sizes, keywords, max price:** edit `reiss_monitor.py` here (or ask
+  Claude to). The Mac downloads the latest version before every check.
+
+**Remove it from the Mac**
+```bash
+curl -fsSL https://raw.githubusercontent.com/issamirza111-beep/reiss-outlet-monitor/main/mac/uninstall.sh | bash
+```
 
 ---
 

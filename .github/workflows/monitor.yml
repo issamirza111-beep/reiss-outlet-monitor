@@ -23,6 +23,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install browser-like HTTP client
+        run: pip install --quiet curl_cffi
+
       - name: Check the outlet
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}

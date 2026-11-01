@@ -87,7 +87,60 @@ def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
+class Blocked(Exception):
+    pass
+
+
+# If curl_cffi is installed, requests go out with a real Chrome TLS/HTTP2
+# fingerprint (many retail sites reject plain Python clients outright).
+try:
+    from curl_cffi import requests as cffi_requests  # pip install curl_cffi
+except Exception:
+    cffi_requests = None
+
+_session = None
+
+
+def _cffi_session():
+    global _session
+    if _session is None:
+        _session = cffi_requests.Session(impersonate="chrome")
+        _session.headers.update({"Accept-Language": "en-GB,en;q=0.9"})
+        try:  # land on the homepage first, like a person would, to pick up cookies
+            _session.get(BASE + "/", timeout=30)
+            time.sleep(random.uniform(1, 2))
+        except Exception:
+            pass
+    return _session
+
+
 def fetch(url, retries=3):
+    if cffi_requests is not None:
+        last = None
+        for attempt in range(1, retries + 1):
+            try:
+                r = _cffi_session().get(url, timeout=30)
+            except Exception as e:
+                last = e
+                time.sleep(3 * attempt)
+                continue
+            if r.status_code == 200:
+                return r.text
+            if r.status_code == 404:
+                return ""
+            last = f"HTTP {r.status_code}"
+            if r.status_code in (403, 429):
+                log(f"  Blocked/rate-limited ({r.status_code}) on {url}")
+                if attempt == retries:
+                    raise Blocked(url)
+                time.sleep(5 * attempt)
+            else:
+                time.sleep(3 * attempt)
+        raise RuntimeError(f"Failed to fetch {url}: {last}")
+    return _fetch_urllib(url, retries)
+
+
+def _fetch_urllib(url, retries=3):
     headers = {
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -107,8 +160,10 @@ def fetch(url, retries=3):
         except urllib.error.HTTPError as e:
             last_err = e
             if e.code in (403, 429):
-                log(f"  Blocked/rate-limited ({e.code}) on {url}; backing off")
-                time.sleep(10 * attempt)
+                log(f"  Blocked/rate-limited ({e.code}) on {url}")
+                if attempt == retries:
+                    raise Blocked(url)
+                time.sleep(5 * attempt)
             elif e.code == 404:
                 return ""
             else:
@@ -276,13 +331,20 @@ def main():
         state = {"items": {}, "last_run": None}
 
     current = {}
+    blocked = False
     for label, paths in SECTIONS.items():
+        if blocked:
+            break
         if isinstance(paths, str):
             paths = [paths]
         got = {}
         for path in paths:
             try:
                 got = crawl_section(label, path)
+            except Blocked:
+                log("Reiss is refusing requests from this machine (403). Stopping this run.")
+                got, blocked = {}, True
+                break
             except Exception as e:
                 log(f"{label}: ERROR on {path}: {e}")
                 got = {}

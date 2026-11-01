@@ -1,0 +1,42 @@
+name: Reiss outlet monitor
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # every 30 minutes
+  workflow_dispatch:          # lets you hit "Run workflow" manually
+
+permissions:
+  contents: write             # needed to save seen_items.json back to the repo
+
+concurrency:
+  group: reiss-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check the outlet
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python reiss_monitor.py
+
+      - name: Save what we've seen
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain seen_items.json)" ]; then
+            git config user.name  "reiss-monitor"
+            git config user.email "reiss-monitor@users.noreply.github.com"
+            git add seen_items.json
+            git commit -m "Update seen items"
+            git push
+          fi

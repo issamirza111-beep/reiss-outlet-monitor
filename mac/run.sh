@@ -27,4 +27,6 @@ export NTFY_TOPIC="$(cat "$DIR/ntfy_topic.txt")"
 /usr/bin/python3 reiss_monitor.py
 
 # Keep the log small
-tail -n 2000 "$DIR/monitor.log" > "$DIR/monitor.log.tmp" 2>/dev/null && mv "$DIR/monitor.log.tmp" "$DIR/monitor.log"
+if [ -f "$DIR/monitor.log" ]; then
+  tail -n 2000 "$DIR/monitor.log" > "$DIR/monitor.log.tmp" && mv "$DIR/monitor.log.tmp" "$DIR/monitor.log"
+fi
